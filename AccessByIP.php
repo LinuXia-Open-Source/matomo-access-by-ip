@@ -24,6 +24,7 @@ use Piwik\Plugins\UsersManager\Model;
 use Piwik\Plugins\UsersManager\UsersManager;
 use Piwik\Auth\Password;
 use Piwik\Date;
+use Piwik\Changes\UserChanges;
 
 class AccessByIP extends \Piwik\Plugin
 {
@@ -131,7 +132,12 @@ class AccessByIP extends \Piwik\Plugin
             $auth->authenticate();
             $this->logger->debug("Password set");
             $sessionInitializer->initSession($auth);
-            $this->logger->debug("Initialized");
+            $this->logger->info("Initialized");
+            $user = $model->getUser($username);
+            if (is_array($user)) {
+                $userChanges = new UserChanges($user);
+                $userChanges->markChangesAsRead();
+            }
             Url::redirectToUrl('index.php');
         }
         return;
@@ -156,6 +162,10 @@ class AccessByIP extends \Piwik\Plugin
                 return;
             }
             # prevent access to these modules to the auto users:
+            if ($module === 'CoreAdminHome' && $action && $action === 'whatIsNew') {
+                # permit these annoying ads
+                return;
+            }
             if ($module === 'UsersManager' ||
                 $module === 'ScheduledReports' ||
                 $module === 'PrivacyManager' ||
